@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Untis Stundenplan Anzeige</title>
+  <link rel="stylesheet" href="/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .header {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .timetable-container, .assignments-container {
+      display: none;
+      margin-bottom: 20px;
+    }
+    .active {
+      display: block;
+    }
+    .lesson {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .normal {
+      background-color: #d4edda;
+    }
+    .cancelled {
+      background-color: #f8d7da;
+      text-decoration: line-through;
+    }
+    .changed {
+      background-color: #fff3cd;
+    }
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 0.8em;
+    }
+    .time {
+      font-weight: bold;
+    }
+    .subject {
+      font-weight: bold;
+    }
+    .teacher {
+      font-style: italic;
+    }
+    .room {
+      color: #6c757d;
+    }
+    .assignment {
+      margin-bottom: 10px;
+      padding: 10px;
+      background-color: #e2e3e5;
+      border-radius: 5px;
+    }
+    .assignment-subject {
+      font-weight: bold;
+    }
+    .assignment-date {
+      font-style: italic;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Untis Stundenplan Anzeige</h1>
+      <p id="current-date"><%= new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %> | <span id="current-time"><%= new Date().toLocaleTimeString('de-DE') %></span></p>
+    </div>
+
+    <div id="timetable" class="timetable-container active">
+      <h2>Stundenplan für <%= nextSchoolDay %></h2>
+      <div class="lessons">
+        <% 
+        // Sortiere den Stundenplan nach Startzeit
+        const sortedTimetable = [...timetable].sort((a, b) => a.startTime - b.startTime);
+        
+        // Lade die Lehrer-Zuordnungen
+        let teachers = {};
+        try {
+          const teacherPath = require('path').join(__dirname, '../config/teacher.json');
+          if (require('fs').existsSync(teacherPath)) {
+            teachers = require(teacherPath);
+          }
+        } catch (error) {
+          console.error('Fehler beim Laden der teacher.json:', error);
+        }
+        
+        // Funktion zum Formatieren der Zeit
+        function formatTime(time) {
+          const timeStr = time.toString().padStart(4, '0');
+          return `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
+        }
+        
+        // Funktion zum Auflösen des Lehrerkürzels
+        function resolveTeacher(code) {
+          return teachers[code] || code;
+        }
+        
+        sortedTimetable.forEach(lesson => {
+          const startTime = formatTime(lesson.startTime);
+          const endTime = formatTime(lesson.endTime);
+          const subject = lesson.su && lesson.su.length > 0 ? lesson.su[0].name : 'Unbekannt';
+          const teacherCode = lesson.te && lesson.te.length > 0 ? lesson.te[0].name : 'Unbekannt';
+          const teacher = resolveTeacher(teacherCode);
+          const room = lesson.ro && lesson.ro.length > 0 ? lesson.ro[0].name : 'Unbekannt';
+          
+          let lessonClass = 'normal';
+          if (lesson.isCancelled) {
+            lessonClass = 'cancelled';
+          } else if (lesson.isChanged) {
+            lessonClass = 'changed';
+          }
+        %>
+          <div class="lesson <%= lessonClass %>">
+            <div class="time"><%= startTime %> - <%= endTime %></div>
+            <div class="subject"><%= subject %></div>
+            <div class="teacher"><%= teacher %></div>
+            <div class="room"><%= room %></div>
+            <% if (lesson.info) { %>
+              <div class="info"><%= lesson.info %></div>
+            <% } %>
+            <% if (lesson.substText) { %>
+              <div class="subst-text"><%= lesson.substText %></div>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <div id="assignments" class="assignments-container">
+      <h2>Aktuelle Arbeiten</h2>
+      <div class="assignments-list">
+        <% assignments.forEach(assignment => { %>
+          <div class="assignment">
+            <div class="assignment-subject"><%= assignment.subject %></div>
+            <div class="assignment-description"><%= assignment.description %></div>
+            <div class="assignment-date">Fällig bis: <%= assignment.dueDate %></div>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Untis Stundenplan Anzeige | Aktualisiert: <span id="update-time"><%= new Date().toLocaleTimeString('de-DE') %></span></p>
+    </div>
+  </div>
+
+  <script src="/js/jquery.min.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
+  <script>
+    // Aktualisiere die Uhrzeit
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('current-time').textContent = now.toLocaleTimeString('de-DE');
+    }
+    
+    // Wechsle zwischen Stundenplan und Arbeiten
+    function toggleView() {
+      const timetable = document.getElementById('timetable');
+      const assignments = document.getElementById('assignments');
+      
+      if (timetable.classList.contains('active')) {
+        timetable.classList.remove('active');
+        assignments.classList.add('active');
+      } else {
+        assignments.classList.remove('active');
+        timetable.classList.add('active');
+      }
+    }
+    
+    // Aktualisiere die Seite nach einer bestimmten Zeit
+    function refreshPage() {
+      location.reload();
+    }
+    
+    // Initialisiere die Funktionen
+    setInterval(updateTime, 1000);
+    setInterval(toggleView, <%= refreshInterval %>);
+    setInterval(refreshPage, <%= refreshInterval * 10 %>);
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "name": "untis-schedule-app",
+  "version": "1.0.0",
+  "description": "Eine Webseite zur Anzeige des Untis-Stundenplans mit Berücksichtigung von Wochenenden, Ferien und Feiertagen",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "keywords": [
+    "untis",
+    "stundenplan",
+    "express",
+    "bootstrap"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "bootstrap": "^5.3.2",
+    "dotenv": "^16.3.1",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "jquery": "^3.7.1",
+    "moment": "^2.29.4",
+    "webuntis": "^2.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

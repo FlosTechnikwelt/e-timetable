@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Untis Stundenplan Anzeige</title>
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .header {
+            margin-bottom: 20px;
+        }
+        .timetable-container, .assignments-container {
+            display: none;
+            margin-bottom: 20px;
+        }
+        .active {
+            display: block;
+        }
+        .lesson {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .lesson-normal {
+            background-color: #d4edda;
+        }
+        .lesson-cancelled {
+            background-color: #f8d7da;
+        }
+        .lesson-changed {
+            background-color: #fff3cd;
+        }
+        .lesson-current {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border: 3px solid #007bff;
+            font-weight: bold;
+            position: relative;
+        }
+        .lesson-current::before {
+            content: "Aktuell";
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background-color: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.8em;
+        }
+        .assignment {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #e2e3e5;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Stundenplan</h1>
+            <p><%= new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %> | <span id="current-time"><%= currentTime %></span></p>
+        </div>
+
+        <div id="content-container">
+            <!-- Timetable View -->
+            <div id="timetable-view" class="timetable-container active">
+                <h2>Stundenplan für <%= nextSchoolDay %></h2>
+                <div class="row">
+                    <div class="col-md-12">
+                        <% if (timetable && timetable.length > 0) { %>
+                            <% timetable.forEach(lesson => { %>
+                                <div class="lesson <%= lesson.isCancelled ? 'lesson-cancelled' : (lesson.isChanged ? 'lesson-changed' : 'lesson-normal') %> <%= lesson.isCurrentLesson ? 'lesson-current' : '' %>">
+                                    <div class="row">
+                                        <div class="col-md-2">
+                                            <strong><%= lesson.formattedStartTime %> - <%= lesson.formattedEndTime %></strong>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <strong><%= lesson.su && lesson.su[0] ? lesson.su[0].name : 'Unbekannt' %></strong>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <%= lesson.teacherName %>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <%= lesson.ro && lesson.ro[0] ? lesson.ro[0].name : 'Unbekannt' %>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <% if (lesson.isCancelled) { %>
+                                                <span class="badge bg-danger">Entfall</span>
+                                            <% } else if (lesson.isChanged) { %>
+                                                <span class="badge bg-warning text-dark">Änderung</span>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                    <% if (lesson.substText || lesson.info) { %>
+                                        <div class="row mt-2">
+                                            <div class="col-md-12">
+                                                <small class="text-muted">
+                                                    <%= lesson.substText || '' %> <%= lesson.info || '' %>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            <% }); %>
+                        <% } else { %>
+                            <div class="alert alert-info">
+                                Keine Stunden für diesen Tag gefunden.
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assignments View -->
+            <div id="assignments-view" class="assignments-container">
+                <h2>Aktuelle Arbeiten</h2>
+                <div class="row">
+                    <div class="col-md-12">
+                        <% if (assignments && assignments.length > 0) { %>
+                            <% assignments.forEach(assignment => { %>
+                                <div class="assignment">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong><%= assignment.subject %></strong>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <%= assignment.description %>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <small class="text-muted">Fällig: <%= assignment.dueDate %></small>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        <% } else { %>
+                            <div class="alert alert-info">
+                                Keine aktuellen Arbeiten gefunden.
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>(C) Copyright 2025 Flostechnikwelt Gruppe | Untis Stundenplan Anzeige | Aktualisiert: <span id="update-time"><%= currentTime %></span></p>
+        </div>
+    </div>
+
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script>
+        // Aktualisiere die Uhrzeit
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('de-DE');
+            document.getElementById('update-time').textContent = now.toLocaleTimeString('de-DE');
+            
+            // Aktualisiere auch die Hervorhebung der aktuellen Stunde
+            updateCurrentLesson();
+        }
+        
+        // Aktualisiere die Hervorhebung der aktuellen Stunde
+        function updateCurrentLesson() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTimeInMinutes = currentHour * 60 + currentMinute;
+            
+            const lessons = document.querySelectorAll('.lesson');
+            lessons.forEach(lesson => {
+                // Entferne zuerst die aktuelle Klasse von allen Stunden
+                lesson.classList.remove('lesson-current');
+                
+                // Extrahiere Start- und Endzeit aus dem Inhalt
+                const timeElement = lesson.querySelector('.col-md-2 strong');
+                if (timeElement) {
+                    const timeText = timeElement.textContent;
+                    const timeMatch = timeText.match(/(\d{2}):(\d{2}) - (\d{2}):(\d{2})/);
+                    
+                    if (timeMatch) {
+                        const startHour = parseInt(timeMatch[1]);
+                        const startMinute = parseInt(timeMatch[2]);
+                        const endHour = parseInt(timeMatch[3]);
+                        const endMinute = parseInt(timeMatch[4]);
+                        
+                        const startTimeInMinutes = startHour * 60 + startMinute;
+                        const endTimeInMinutes = endHour * 60 + endMinute;
+                        
+                        // Prüfe, ob diese Stunde gerade läuft
+                        if (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes) {
+                            lesson.classList.add('lesson-current');
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Wechsle zwischen Stundenplan und Arbeiten
+        function toggleView() {
+            const timetableView = document.getElementById('timetable-view');
+            const assignmentsView = document.getElementById('assignments-view');
+            
+            if (timetableView.classList.contains('active')) {
+                timetableView.classList.remove('active');
+                assignmentsView.classList.add('active');
+            } else {
+                assignmentsView.classList.remove('active');
+                timetableView.classList.add('active');
+            }
+        }
+        
+        // Aktualisiere die Seite nach einer bestimmten Zeit
+        function refreshPage() {
+            location.reload();
+        }
+        
+        // Initialisiere die Funktionen
+        setInterval(updateTime, 1000);
+        setInterval(toggleView, <%= refreshInterval %>);
+        setInterval(refreshPage, <%= refreshInterval * 10 %>);
+        
+        // Initialisiere die Hervorhebung der aktuellen Stunde
+        updateCurrentLesson();
+    </script>
+</body>
+</html>

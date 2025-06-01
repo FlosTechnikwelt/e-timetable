@@ -1,0 +1,9 @@
+{
+  "webuntis": {
+    "school": "EBGSS Wedel",
+    "username": "USERNAME",
+    "password": "PASSWORD",
+    "baseUrl": "niobe.webuntis.com"
+  },
+  "refreshInterval": 30000
+}
